@@ -1,31 +1,72 @@
 rules_version = '2';
 service cloud.firestore {
- match /databases/{database}/documents {
-  function signedIn() { return request.auth != null; }
-  function profile() { return get(/databases/$(database)/documents/profiles/$(request.auth.uid)); }
-  function role() { return signedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) ? profile().data.role : "none"; }
-  function manager() { return role() == "admin"; }
-  function sectionAllowed(section) { return manager() || role() == section; }
-  match /profiles/{uid} {
-   allow read: if signedIn() && (request.auth.uid == uid || manager());
-   allow write: if false; // Provision in Firebase Console or trusted Admin SDK only
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function profilePath() {
+      return /databases/$(database)/documents/profiles/$(request.auth.uid);
+    }
+    function role() {
+      return signedIn() && exists(profilePath())
+        ? get(profilePath()).data.role : 'none';
+    }
+    function manager() { return role() == 'admin'; }
+    function member() {
+      return role() in ['admin', 'primary', 'intermediate', 'secondary', 'special'];
+    }
+    function validSection(section) {
+      return section in ['admin', 'primary', 'intermediate', 'secondary', 'special'];
+    }
+    // Cell IDs are deterministic and must match their section, e.g. primary-12.
+    // The client must use a fixed mapping of the original report's table cells.
+    function validCell(cellId, section) {
+      return validSection(section)
+        && cellId.matches('^' + section + '-[0-9]+$');
+    }
+    function parentExists(reportId) {
+      return exists(/databases/$(database)/documents/reports/$(reportId));
+    }
+    function canEditReport(reportId) {
+      return manager() ||
+        get(/databases/$(database)/documents/reports/$(reportId)).data.locked == false;
+    }
+    function validCellData(cellId) {
+      return request.resource.data.keys().hasAll(['section', 'html', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasOnly(['section', 'html', 'updatedAt', 'updatedBy'])
+        && request.resource.data.section is string
+        && validCell(cellId, request.resource.data.section)
+        && request.resource.data.html is string
+        && request.resource.data.html.size() <= 20000
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && (manager() || role() == request.resource.data.section);
+    }
+    match /profiles/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || manager());
+      // Never allow users to grant themselves administrator privileges.
+      allow create, update, delete: if false;
+    }
+    match /reports/{reportId} {
+      allow read: if member();
+      allow create: if manager()
+        && request.resource.data.keys().hasAll(['locked'])
+        && request.resource.data.locked is bool;
+      allow update: if manager()
+        && request.resource.data.keys().hasAll(['locked'])
+        && request.resource.data.locked is bool;
+      allow delete: if manager();
+      match /cells/{cellId} {
+        allow read: if member();
+        allow create: if member()
+          && parentExists(reportId)
+          && canEditReport(reportId)
+          && validCellData(cellId);
+        allow update: if member()
+          && parentExists(reportId)
+          && canEditReport(reportId)
+          && validCellData(cellId)
+          && resource.data.section == request.resource.data.section;
+        allow delete: if manager();
+      }
+    }
   }
-  match /reports/{reportId} {
-   allow read: if role() in ["admin","primary","intermediate","secondary","special"];
-   allow create,update,delete: if manager();
-   match /cells/{cellId} {
-    allow read: if role() in ["admin","primary","intermediate","secondary","special"];
-    allow create,update: if sectionAllowed(request.resource.data.section)
-      && request.resource.data.keys().hasOnly(["section","html","updatedAt","updatedBy"])
-      && request.resource.data.section in ["admin","primary","intermediate","secondary","special"]
-      && request.resource.data.html is string
-      && request.resource.data.html.size() <= 20000
-      && request.resource.data.updatedBy == request.auth.uid
-      && request.resource.data.updatedAt == request.time
-      && (resource == null || resource.data.section == request.resource.data.section)
-      && get(/databases/$(database)/documents/reports/$(reportId)).data.locked != true;
-    allow delete: if manager();
-   }
-  }
- }
 }
