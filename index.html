@@ -57,7 +57,7 @@ color.addEventListener('input',()=>apply('foreColor',color.value));
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,onSnapshot,serverTimestamp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
-const config={apiKey:'AIzaSyC0AKz_MOlvw5i6od3XdGEN4wOvOwi9XpM',authDomain:'bayariq-daily-report.firebaseapp.com',projectId:'bayariq-daily-report',storageBucket:'bayariq-daily-report.firebasestorage.app',messagingSenderId:'586890009842',appId:'1:586890009842:web:918d3c906ecfbcfbbe846b'};
+const config={apiKey:'AIzaSyC0AKz_MOlvw5i6od3XdGEN4wOvOwi9XpM',authDomain:'bayariq-daily-report.firebaseapp.com',projectId:'bayariq-daily-report',storageBucket:'bayariq-daily-report.firebasestorage.app',messagingSenderId:'586890009842',appId:'1:586890009842:web:918d3c906ecfbcbfbe846b'};
 const auth=getAuth(initializeApp(config)),db=getFirestore(auth.app),reportId='daily-current';
 const roles={admin:'المشرف العام',primary:'الابتدائي',intermediate:'المتوسط',secondary:'الثانوي',special:'التربية الخاصة'};
 const login=document.getElementById('collab-login'),status=document.getElementById('collab-status'),error=document.getElementById('collab-error');
