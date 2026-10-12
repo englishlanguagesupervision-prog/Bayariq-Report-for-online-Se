@@ -44,18 +44,26 @@
  .recommend-controls{height:0!important;margin:0!important;padding:0!important}
 }
 </style><style id="recommend-print-final">
+/* User-adjustable density, applied to print and screen without touching Firestore text. */
+.recommend{--recommend-font:11px;--recommend-leading:1.45;--recommend-pad:4px}
+.recommend td:nth-child(2){font-size:var(--recommend-font)!important;line-height:var(--recommend-leading)!important;padding:var(--recommend-pad) 6px!important}
+.recommend-controls .recommend-size{display:inline-flex;gap:5px;align-items:center;margin-inline:8px;font-size:12px}
+.recommend-controls .recommend-size button{border:1px solid #888;border-radius:4px;padding:5px 9px;background:#fff;cursor:pointer}
 @media print{
- /* A recommendation block stays together; if it cannot fit, it moves as one block. */
- .recommend-print-group{break-inside:avoid!important;page-break-inside:avoid!important;display:block!important}
- .recommend-print-group .section{margin-top:3mm!important;margin-bottom:2mm!important}
- .recommend-print-group .recommend{break-inside:avoid!important;page-break-inside:avoid!important}
- .recommend-print-group .recommend td{font-size:10px!important;line-height:1.35!important;padding:3px 5px!important}
+ .recommend-print-group{display:block!important;break-inside:auto!important;page-break-inside:auto!important}
+ .recommend-print-group .section{margin-top:2mm!important;margin-bottom:1.5mm!important}
+ .recommend-print-group .recommend{break-inside:auto!important;page-break-inside:auto!important}
  .recommend-print-group .recommend tr{break-inside:avoid!important;page-break-inside:avoid!important}
- .recommend-print-group .signature{margin-top:4mm!important;font-size:14px!important;line-height:1.4!important}
+ .recommend-print-group .recommend td{height:auto!important;min-height:0!important}
+ .recommend-print-group .signature{margin-top:3mm!important;font-size:13px!important;line-height:1.35!important;break-inside:avoid!important}
  .recommend-print-group .signature strong{margin-top:1mm!important}
  .recommend-row-delete,.recommend-controls,#recommend-add-row{display:none!important}
  .recommend td:first-child button{display:none!important}
- .sheet.page2{padding-top:7mm!important;padding-bottom:7mm!important}
+ .sheet.page2{padding-top:5mm!important;padding-bottom:5mm!important}
+ /* Compact the earlier tables on page two so all recommendations fit below. */
+ .sheet.page2 .section{margin-top:3mm!important;margin-bottom:2mm!important}
+ .sheet.page2 table:not(.recommend) td,.sheet.page2 table:not(.recommend) th{font-size:10px!important;line-height:1.2!important;padding:2px 3px!important;height:auto!important}
+ .sheet.page2 .large td,.sheet.page2 .medium td,.sheet.page2 .small td{height:auto!important;min-height:0!important}
 }
 </style></head><body><div id="collab-login"><div class="login-box"><h2>مدارس البيارق الأهلية</h2><p>تقرير التعليم عن بُعد — الدخول الجماعي</p><form id="collab-form"><input id="collab-user" autocomplete="username" placeholder="اسم المستخدم" required><input id="collab-pass" type="password" autocomplete="current-password" placeholder="كلمة المرور" required><button type="submit">دخول</button></form><p id="collab-error" role="alert" style="color:#a22"></p></div></div><div id="collab-status" hidden>جاري الاتصال...</div><div class="toolbar" dir="rtl" role="toolbar" aria-label="تنسيق النص">
  <span class="tooltitle">تنسيق التقرير</span>
@@ -242,6 +250,23 @@ recommendControls.className='recommend-controls';
 recommendControls.style.cssText='text-align:right;margin:7px 0 12px';
 recommendControls.innerHTML='<button id="recommend-add-row" type="button" style="background:#e6f4e9;border:1px solid #176b3b;border-radius:5px;padding:7px 14px;cursor:pointer">＋ إضافة صف توصية</button>';
 recommendTable.after(recommendControls);
+const density=document.createElement('span');density.className='recommend-size';
+density.innerHTML='<span>حجم جدول التوصيات:</span><button type="button" data-density="-1" title="تصغير النص والمسافات">− تصغير</button><button type="button" data-density="1" title="تكبير النص والمسافات">＋ تكبير</button><button type="button" data-density="0" title="الحجم الافتراضي">افتراضي</button>';
+recommendControls.appendChild(density);
+let recommendDensity=Number(localStorage.getItem('bayariq-recommend-density')||0);
+function applyRecommendDensity(){
+ recommendDensity=Math.max(-3,Math.min(3,recommendDensity));
+ recommendTable.style.setProperty('--recommend-font',(11+recommendDensity)+'px');
+ recommendTable.style.setProperty('--recommend-leading',String(1.45+recommendDensity*.07));
+ recommendTable.style.setProperty('--recommend-pad',Math.max(1,4+recommendDensity)+'px');
+ try{localStorage.setItem('bayariq-recommend-density',String(recommendDensity))}catch(e){}
+}
+density.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+ if(role!=='admin')return;
+ recommendDensity=b.dataset.density==='0'?0:recommendDensity+Number(b.dataset.density);
+ applyRecommendDensity();
+});
+applyRecommendDensity();
 function renderRecommendations(){
  let n=0;
  recommendRows.forEach((row,i)=>{
