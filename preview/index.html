@@ -70,6 +70,26 @@ const login=document.getElementById('collab-login'),status=document.getElementBy
 const fields=[...document.querySelectorAll('[data-cell]')],dates=[...document.querySelectorAll('[data-admin-input]')];
 let role='',uid='',locked=false,unsubs=[],timers=new Map(),generation=0,applying=false;
 const all=[...fields,...dates];
+const safeTags=new Set(['B','STRONG','I','EM','U','S','STRIKE','BR','P','DIV','SPAN','FONT','UL','OL','LI','SUB','SUP']);
+function safeHtml(input){
+ const template=document.createElement('template');template.innerHTML=String(input||'');
+ const clean=node=>{
+  for(const child of [...node.childNodes]){
+   if(child.nodeType===8){child.remove();continue}
+   if(child.nodeType!==1){if(child.nodeType!==3)child.remove();continue}
+   if(!safeTags.has(child.tagName)){const txt=document.createTextNode(child.textContent||'');child.replaceWith(txt);continue}
+   for(const a of [...child.attributes]){
+    if(a.name==='style'){
+     const allowed=['color','background-color','font-size','font-family','font-weight','font-style','text-decoration','text-align'];
+     const parts=a.value.split(';').map(x=>x.trim()).filter(x=>{const m=x.match(/^([a-z-]+)\s*:\s*(.*)$/i);return m&&allowed.includes(m[1].toLowerCase())&&!/url\s*\(|expression\s*\(|[<>]/i.test(m[2])});
+     if(parts.length)child.setAttribute('style',parts.join(';'));else child.removeAttribute('style');
+    }else child.removeAttribute(a.name);
+   }
+   clean(child);
+  }
+ };clean(template.content);return template.innerHTML;
+}
+
 function setStatus(t){status.hidden=false;status.textContent=t}
 function canEdit(el){return !!uid && (role==='admin'||(!locked && el.dataset.section===role))}
 function lockUI(){
@@ -102,13 +122,13 @@ onAuthStateChanged(auth,async user=>{
   locked=snap.data().locked===true;login.style.display='none';lockUI();setStatus('متصل — '+roles[role]);
   unsubs.push(onSnapshot(report,d=>{if(d.exists()){locked=d.data().locked===true;lockUI();setStatus((locked?'التقرير مغلق — ':'متصل — ')+roles[role])}},()=>setStatus('تعذر تحميل حالة التقرير')));
   for(const el of all){
-   const id=el.dataset.cell||'admin-'+el.dataset.adminInput;
+   const id=el.dataset.cell||'admin-'+({day:1,gregorian:2,hijri:3}[el.dataset.adminInput]);
    const ref=doc(db,'reports',reportId,'cells',id);
    unsubs.push(onSnapshot(ref,d=>{
     if(current!==generation||!d.exists()||document.activeElement===el)return;
     applying=true;
     if(el.dataset.adminInput)el.value=d.data().html||'';
-    else el.innerHTML=d.data().html||'';
+    else el.innerHTML=safeHtml(d.data().html||'');
     applying=false;
    },()=>setStatus('تعذر تحميل بعض الخانات')));
   }
@@ -116,12 +136,12 @@ onAuthStateChanged(auth,async user=>{
 });
 function queueSave(el){
  if(applying||!canEdit(el))return;
- const id=el.dataset.cell||'admin-'+el.dataset.adminInput;
+ const id=el.dataset.cell||'admin-'+({day:1,gregorian:2,hijri:3}[el.dataset.adminInput]);
  clearTimeout(timers.get(id));const owner=uid,session=generation;
  timers.set(id,setTimeout(async()=>{
   if(session!==generation||!canEdit(el)||owner!==uid)return;
   try{
-   await setDoc(doc(db,'reports',reportId,'cells',id),{section:el.dataset.section||'admin',html:el.dataset.adminInput?el.value:el.innerHTML,updatedAt:serverTimestamp(),updatedBy:owner});
+   await setDoc(doc(db,'reports',reportId,'cells',id),{section:el.dataset.section||'admin',html:el.dataset.adminInput?el.value:safeHtml(el.innerHTML),updatedAt:serverTimestamp(),updatedBy:owner});
    if(session===generation)setStatus('تم الحفظ — '+roles[role]);
   }catch(e){if(session===generation)setStatus('فشل الحفظ — تحقق من الاتصال والصلاحيات')}
  },650));
