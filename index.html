@@ -28,6 +28,21 @@
 #collab-status{position:fixed;bottom:12px;left:12px;background:#153e4c;color:white;padding:8px 14px;border-radius:9px;z-index:50;font:12px Tahoma,Arial}
 [data-section][contenteditable="false"]{cursor:default}
 @media print{#collab-login,#collab-status,#collab-logout{display:none!important}}
+</style><style id="recommend-print-layout">
+/* Recommendation text can expand naturally without narrowing the numbering column. */
+.recommend{table-layout:fixed}
+.recommend td:first-child{width:15mm!important;min-width:15mm;vertical-align:top;text-align:center;padding:5px 2px}
+.recommend td:nth-child(2){height:auto!important;min-height:11mm;vertical-align:top;text-align:right;padding:7px 9px!important;line-height:1.75!important;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal}
+.recommend-row-delete{display:block;margin:6px auto 0!important;white-space:nowrap;font-size:10px!important;padding:3px 2px!important;max-width:100%}
+.recommend tr{height:auto!important}
+@media print{
+ .recommend-row-delete,.recommend-controls,#recommend-add-row{display:none!important;visibility:hidden!important}
+ .recommend td:first-child{width:10mm!important;min-width:10mm!important;vertical-align:middle!important;padding:4px 2px!important}
+ .recommend td:nth-child(2){height:auto!important;min-height:9mm!important;padding:5px 7px!important;line-height:1.6!important;white-space:normal!important;overflow-wrap:break-word!important}
+ .recommend tr{break-inside:avoid!important;page-break-inside:avoid!important}
+ .recommend td{break-inside:avoid!important;page-break-inside:avoid!important}
+ .recommend-controls{height:0!important;margin:0!important;padding:0!important}
+}
 </style></head><body><div id="collab-login"><div class="login-box"><h2>مدارس البيارق الأهلية</h2><p>تقرير التعليم عن بُعد — الدخول الجماعي</p><form id="collab-form"><input id="collab-user" autocomplete="username" placeholder="اسم المستخدم" required><input id="collab-pass" type="password" autocomplete="current-password" placeholder="كلمة المرور" required><button type="submit">دخول</button></form><p id="collab-error" role="alert" style="color:#a22"></p></div></div><div id="collab-status" hidden>جاري الاتصال...</div><div class="toolbar" dir="rtl" role="toolbar" aria-label="تنسيق النص">
  <span class="tooltitle">تنسيق التقرير</span>
  <select id="fontFamily" title="نوع الخط" aria-label="نوع الخط"><option value="Tahoma">Tahoma</option><option value="Arial">Arial</option><option value="Traditional Arabic">Traditional Arabic</option><option value="Simplified Arabic">Simplified Arabic</option><option value="Amiri">Amiri</option></select>
