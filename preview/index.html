@@ -122,7 +122,7 @@ onAuthStateChanged(auth,async user=>{
   locked=snap.data().locked===true;login.style.display='none';lockUI();setStatus('متصل — '+roles[role]);
   unsubs.push(onSnapshot(report,d=>{if(d.exists()){locked=d.data().locked===true;lockUI();setStatus((locked?'التقرير مغلق — ':'متصل — ')+roles[role])}},()=>setStatus('تعذر تحميل حالة التقرير')));
   for(const el of all){
-   const id=el.dataset.cell||'admin-'+({day:1,gregorian:2,hijri:3}[el.dataset.adminInput]);
+   const id=el.dataset.cell||'admin-'+({day:101,gregorian:102,hijri:103}[el.dataset.adminInput]);
    const ref=doc(db,'reports',reportId,'cells',id);
    unsubs.push(onSnapshot(ref,d=>{
     if(current!==generation||!d.exists()||document.activeElement===el)return;
@@ -136,7 +136,7 @@ onAuthStateChanged(auth,async user=>{
 });
 function queueSave(el){
  if(applying||!canEdit(el))return;
- const id=el.dataset.cell||'admin-'+({day:1,gregorian:2,hijri:3}[el.dataset.adminInput]);
+ const id=el.dataset.cell||'admin-'+({day:101,gregorian:102,hijri:103}[el.dataset.adminInput]);
  clearTimeout(timers.get(id));const owner=uid,session=generation;
  timers.set(id,setTimeout(async()=>{
   if(session!==generation||!canEdit(el)||owner!==uid)return;
