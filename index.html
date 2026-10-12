@@ -110,7 +110,7 @@ const auth=getAuth(initializeApp(config)),db=getFirestore(auth.app),reportId='da
 const roles={admin:'المشرف العام',primary:'الابتدائي',intermediate:'المتوسط',secondary:'الثانوي',special:'التربية الخاصة'};
 const login=document.getElementById('collab-login'),status=document.getElementById('collab-status'),error=document.getElementById('collab-error');
 const fields=[...document.querySelectorAll('[data-cell]')],dates=[...document.querySelectorAll('[data-admin-input]')];
-let role='',uid='',locked=false,unsubs=[],timers=new Map(),generation=0,applying=false;
+let role='',uid='',locked=false,hiddenRecommendations=[],unsubs=[],timers=new Map(),generation=0,applying=false;
 const all=[...fields]; // Calendar is stored only on the parent report document, never in recommendation cells.
 // Unique document namespace for date controls, distinct from recommendation cells.
 
@@ -138,13 +138,14 @@ function safeHtml(input){
 function setStatus(t){status.hidden=false;status.textContent=t}
 function canEdit(el){return !!uid && (role==='admin'||(!locked && el.dataset.section===role))}
 function lockUI(){
+ document.querySelectorAll('.recommend-row-delete,#recommend-add-row').forEach(b=>{b.hidden=role!=='admin';b.disabled=role!=='admin'});
  fields.forEach(el=>el.contentEditable=canEdit(el)?'true':'false');
  dates.forEach(el=>el.disabled=role!=='admin');
  document.querySelectorAll('.calendar-tools button').forEach(el=>el.disabled=role!=='admin');
  document.querySelectorAll('.toolbar [data-cmd],#fontFamily,#fontSize,#textColor').forEach(el=>el.disabled=!uid);
  document.querySelectorAll('.toolbar button').forEach(el=>{if(/تفريغ الحقول/.test(el.textContent))el.disabled=true});
 }
-function reset(){generation++;unsubs.forEach(f=>f());unsubs=[];timers.forEach(clearTimeout);timers.clear();role='';uid='';locked=false;lockUI();login.style.display='grid';status.hidden=true}
+function reset(){generation++;unsubs.forEach(f=>f());unsubs=[];timers.forEach(clearTimeout);timers.clear();role='';uid='';locked=false;hiddenRecommendations=[];renderRecommendations();lockUI();login.style.display='grid';status.hidden=true}
 document.getElementById('collab-form').addEventListener('submit',async e=>{
  e.preventDefault();error.textContent='';
  const username=document.getElementById('collab-user').value.trim().toLowerCase();
@@ -165,7 +166,7 @@ onAuthStateChanged(auth,async user=>{
   if(!snap.exists())throw Error('report');
   if(current!==generation)return;
   locked=snap.data().locked===true;login.style.display='none';lockUI();setStatus('متصل — '+roles[role]);
-  unsubs.push(onSnapshot(report,d=>{if(d.exists()){locked=d.data().locked===true;const c=d.data().calendar;if(c&&typeof c==='object'){for(const el of dates){if(document.activeElement!==el&&typeof c[el.dataset.adminInput]==='string')el.value=c[el.dataset.adminInput]}refreshDateHeading()}lockUI();setStatus((locked?'التقرير مغلق — ':'متصل — ')+roles[role])}},()=>setStatus('تعذر تحميل حالة التقرير')));
+  unsubs.push(onSnapshot(report,d=>{if(d.exists()){locked=d.data().locked===true;hiddenRecommendations=Array.isArray(d.data().hiddenRecommendations)?d.data().hiddenRecommendations.filter(x=>Number.isInteger(x)&&x>=1&&x<=7):[];renderRecommendations();const c=d.data().calendar;if(c&&typeof c==='object'){for(const el of dates){if(document.activeElement!==el&&typeof c[el.dataset.adminInput]==='string')el.value=c[el.dataset.adminInput]}refreshDateHeading()}lockUI();setStatus((locked?'التقرير مغلق — ':'متصل — ')+roles[role])}},()=>setStatus('تعذر تحميل حالة التقرير')));
   for(const el of all){
    const id=el.dataset.cell||'admin-'+({day:101,gregorian:102,hijri:103}[el.dataset.adminInput]);
    const ref=doc(db,'reports',reportId,'cells',id);
@@ -204,6 +205,49 @@ function saveCalendar(){
  },700);
 }
 dates.forEach(el=>{el.addEventListener('input',saveCalendar);el.addEventListener('change',saveCalendar)});
+
+const recommendTable=document.querySelector('table.recommend');
+const recommendRows=[...recommendTable.tBodies[0].rows];
+const recommendControls=document.createElement('div');
+recommendControls.className='recommend-controls';
+recommendControls.style.cssText='text-align:right;margin:7px 0 12px';
+recommendControls.innerHTML='<button id="recommend-add-row" type="button" style="background:#e6f4e9;border:1px solid #176b3b;border-radius:5px;padding:7px 14px;cursor:pointer">＋ إضافة صف توصية</button>';
+recommendTable.after(recommendControls);
+function renderRecommendations(){
+ let n=0;
+ recommendRows.forEach((row,i)=>{
+  row.hidden=hiddenRecommendations.includes(i+1);
+  row.style.display=row.hidden?'none':'';
+  row.cells[0].firstChild.textContent=row.hidden?'':String(++n);
+ });
+ document.querySelectorAll('.recommend-row-delete,#recommend-add-row').forEach(b=>{b.hidden=role!=='admin';b.disabled=role!=='admin'});
+ document.getElementById('recommend-add-row').disabled=role!=='admin'||hiddenRecommendations.length===0;
+}
+recommendRows.forEach((row,i)=>{
+ const b=document.createElement('button');b.type='button';b.className='recommend-row-delete';b.textContent='حذف الصف';b.title='إخفاء صف التوصية من التقرير للجميع';
+ b.style.cssText='margin-right:7px;font-size:11px;border:1px solid #ba5353;background:#fff1f1;color:#9d2020;border-radius:4px;padding:3px 6px;cursor:pointer';
+ row.cells[0].appendChild(b);
+ b.onclick=async()=>{
+  if(role!=='admin'||!uid)return;
+  if(!confirm('حذف صف التوصية رقم '+row.cells[0].firstChild.textContent+' من التقرير؟ سيتم الاحتفاظ بالنص احتياطيًا في قاعدة البيانات.'))return;
+  const previous=[...hiddenRecommendations];
+  hiddenRecommendations=[...new Set([...hiddenRecommendations,i+1])].sort((a,b)=>a-b);renderRecommendations();
+  try{await setDoc(doc(db,'reports',reportId),{hiddenRecommendations},{merge:true});setStatus('تم حذف الصف وتحديث الترقيم')}
+  catch(e){hiddenRecommendations=previous;renderRecommendations();alert('تعذر حذف الصف؛ حاول مجددًا')}
+ };
+});
+document.getElementById('recommend-add-row').onclick=async()=>{
+ if(role!=='admin'||!uid||!hiddenRecommendations.length)return;
+ const i=hiddenRecommendations[0]-1,el=recommendRows[i].querySelector('[data-cell]');
+ try{
+  await setDoc(doc(db,'reports',reportId,'cells',el.dataset.cell),{section:'admin',html:'',updatedAt:serverTimestamp(),updatedBy:uid});
+  el.innerHTML='';
+  hiddenRecommendations=hiddenRecommendations.filter(x=>x!==i+1);
+  await setDoc(doc(db,'reports',reportId),{hiddenRecommendations},{merge:true});
+  renderRecommendations();setStatus('تمت إضافة صف فارغ');
+ }catch(e){alert('تعذرت إضافة الصف؛ تحقق من الاتصال')}
+};
+renderRecommendations();
 const restore=document.createElement('button');
 restore.type='button';restore.textContent='استعادة التوصيات ١–٣';restore.title='استعادة نصوص التوصيات الأصلية بعد تلفها بسبب تداخل التاريخ';
 restore.className='collab-btn';restore.style.cssText='margin-inline-start:6px';
