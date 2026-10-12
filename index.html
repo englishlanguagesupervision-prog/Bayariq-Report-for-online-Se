@@ -44,7 +44,7 @@ function fields(){return [...document.querySelectorAll('[contenteditable],.date 
 function setToday(){const d=new Date();document.getElementById('gregorian').value=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');updateHijri();document.getElementById('gregorian').dispatchEvent(new Event('change',{bubbles:true}))}
 function refreshDateHeading(){
  const v=document.getElementById('gregorian').value;
- if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(v))return;
+ if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v))return;
  const [y,m,day]=v.split('-').map(Number),d=new Date(y,m-1,day,12);
  if(d.getFullYear()!==y||d.getMonth()!==m-1||d.getDate()!==day)return;
  const h=new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura',{year:'numeric',month:'numeric',day:'numeric'}).formatToParts(d);
@@ -111,7 +111,7 @@ const roles={admin:'المشرف العام',primary:'الابتدائي',interm
 const login=document.getElementById('collab-login'),status=document.getElementById('collab-status'),error=document.getElementById('collab-error');
 const fields=[...document.querySelectorAll('[data-cell]')],dates=[...document.querySelectorAll('[data-admin-input]')];
 let role='',uid='',locked=false,unsubs=[],timers=new Map(),generation=0,applying=false;
-const all=[...fields,...dates];
+const all=[...fields]; // Calendar is stored only on the parent report document, never in recommendation cells.
 // Unique document namespace for date controls, distinct from recommendation cells.
 
 refreshDateHeading();
@@ -165,7 +165,7 @@ onAuthStateChanged(auth,async user=>{
   if(!snap.exists())throw Error('report');
   if(current!==generation)return;
   locked=snap.data().locked===true;login.style.display='none';lockUI();setStatus('متصل — '+roles[role]);
-  unsubs.push(onSnapshot(report,d=>{if(d.exists()){locked=d.data().locked===true;lockUI();setStatus((locked?'التقرير مغلق — ':'متصل — ')+roles[role])}},()=>setStatus('تعذر تحميل حالة التقرير')));
+  unsubs.push(onSnapshot(report,d=>{if(d.exists()){locked=d.data().locked===true;const c=d.data().calendar;if(c&&typeof c==='object'){for(const el of dates){if(document.activeElement!==el&&typeof c[el.dataset.adminInput]==='string')el.value=c[el.dataset.adminInput]}refreshDateHeading()}lockUI();setStatus((locked?'التقرير مغلق — ':'متصل — ')+roles[role])}},()=>setStatus('تعذر تحميل حالة التقرير')));
   for(const el of all){
    const id=el.dataset.cell||'admin-'+({day:101,gregorian:102,hijri:103}[el.dataset.adminInput]);
    const ref=doc(db,'reports',reportId,'cells',id);
@@ -192,5 +192,37 @@ function queueSave(el){
  },650));
 }
 all.forEach(el=>{el.addEventListener('input',()=>queueSave(el));el.addEventListener('change',()=>queueSave(el))});
+let calendarTimer;
+function saveCalendar(){
+ if(role!=='admin'||!uid)return;
+ clearTimeout(calendarTimer);
+ calendarTimer=setTimeout(async()=>{
+  if(role!=='admin'||!uid)return;
+  const calendar=Object.fromEntries(dates.map(el=>[el.dataset.adminInput,el.value]));
+  try{await setDoc(doc(db,'reports',reportId),{calendar},{merge:true});setStatus('تم حفظ التاريخ — المشرف العام')}
+  catch(e){setStatus('تعذر حفظ التاريخ؛ حاول مرة أخرى')}
+ },700);
+}
+dates.forEach(el=>{el.addEventListener('input',saveCalendar);el.addEventListener('change',saveCalendar)});
+const restore=document.createElement('button');
+restore.type='button';restore.textContent='استعادة التوصيات ١–٣';restore.title='استعادة نصوص التوصيات الأصلية بعد تلفها بسبب تداخل التاريخ';
+restore.className='collab-btn';restore.style.cssText='margin-inline-start:6px';
+document.querySelector('.toolbar').appendChild(restore);
+restore.addEventListener('click',async()=>{
+ if(role!=='admin'||!uid){alert('هذه العملية للمشرف العام فقط');return}
+ const originals=[
+ 'ضرورة ضبط الحصة والتحكم في الميكروفونات، والتعامل مع السلوكيات المعيقة للتعلم، وإبلاغ وكيل القسم أو المرشد الطلابي بالحالات المتكررة لاتخاذ الإجراء التربوي المناسب.',
+ 'تحديد المكسب المهاري بوضوح داخل الشريحة والتأكيد عليه لفظيًا مع الطلاب؛ فهو جوهر المخرج التعليمي وأقوى أداة تسويقية لتميز المدارس أمام أولياء الأمور.',
+ 'عدم شغل الشاشة بصورة المعلم ملء الشاشة، وضبط الكاميرا في إطار جانبي مخصص حتى تظل المادة التعليمية هي محور تركيز الطلاب.'
+ ];
+ if(!confirm('سيتم استبدال التوصيات ١ و٢ و٣ فقط بالنصوص الأصلية من الصورة. هل تريد المتابعة؟'))return;
+ restore.disabled=true;
+ try{
+  for(let i=0;i<3;i++)await setDoc(doc(db,'reports',reportId,'cells','admin-'+(i+1)),{section:'admin',html:originals[i],updatedAt:serverTimestamp(),updatedBy:uid});
+  setStatus('تم استرجاع التوصيات ١–٣');alert('تم استرجاع التوصيات الثلاث. التوصية الرابعة لم تتغير.');
+ }catch(e){alert('تعذر الاسترجاع الكامل. تحقق من الاتصال ثم أعد المحاولة.')}
+ finally{restore.disabled=false}
+});
+
 const out=document.createElement('button');out.id='collab-logout';out.className='collab-btn';out.textContent='خروج';out.style.cssText='position:fixed;bottom:12px;right:12px;z-index:51';out.onclick=()=>signOut(auth);document.body.appendChild(out);
 </script></body></html>
