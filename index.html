@@ -318,7 +318,7 @@ clearAllButton.addEventListener('click',async()=>{
   const reportRef=doc(db,'reports',reportId);
   const cellSnap=await getDocs(collection(db,'reports',reportId,'cells'));
   const reportSnap=await getDoc(reportRef);
-  const backupRef=doc(collection(db,'reports',reportId,'backups'));
+  const backupRef=doc(collection(db,'reports'));
   const cellsBackup={};
   cellSnap.forEach(d=>{cellsBackup[d.id]={section:d.data().section,html:d.data().html||''}});
   await setDoc(backupRef,{createdAt:serverTimestamp(),createdBy:uid,calendar:reportSnap.data()?.calendar||{},cells:cellsBackup});
