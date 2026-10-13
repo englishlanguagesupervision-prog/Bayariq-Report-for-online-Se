@@ -187,9 +187,9 @@ document.getElementById('collab-form').addEventListener('submit',async e=>{
  e.preventDefault();error.textContent='';
  const username=document.getElementById('collab-user').value.trim().toLowerCase();
  const shortName=username.includes('@')?username.split('@')[0]:username;
- if(!roles[shortName]){error.textContent='اسم المستخدم غير صحيح';return}
- if(username.includes('@') && !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(username)){error.textContent='اكتب البريد الإلكتروني كاملًا';return}
- if(shortName==='supervisor'&&!username.includes('@')){error.textContent='لحساب المشرفين، اكتب البريد الإلكتروني كاملًا المسجل في Firebase';return}
+ if(!Object.prototype.hasOwnProperty.call(roles,shortName)){error.textContent='اسم المستخدم غير صحيح';return}
+ if(username.includes('@') && (username.split('@').length!==2 || !username.split('@')[1].includes('.'))){error.textContent='اكتب البريد الإلكتروني كاملًا';return}
+ if(shortName==='supervisor'&&!username.includes('@')){error.textContent='اكتب البريد الإلكتروني الكامل للمشرفين';return}
  const loginEmail=username.includes('@')?username:username+'@bayariq-login.invalid';
  try{await signInWithEmailAndPassword(auth,loginEmail,document.getElementById('collab-pass').value)}
  catch(e){error.textContent='تعذر تسجيل الدخول. تأكد من البريد وكلمة المرور.'}
