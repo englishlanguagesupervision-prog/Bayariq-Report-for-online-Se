@@ -144,7 +144,7 @@ import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from 'htt
 import {getFirestore,doc,getDoc,setDoc,onSnapshot,serverTimestamp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 const config={apiKey:'AIzaSyC0AKz_MOlvw5i6od3XdGEN4wOvOwi9XpM',authDomain:'bayariq-daily-report.firebaseapp.com',projectId:'bayariq-daily-report',storageBucket:'bayariq-daily-report.firebasestorage.app',messagingSenderId:'586890009842',appId:'1:586890009842:web:918d3c906ecfbcbfbe846b'};
 const auth=getAuth(initializeApp(config)),db=getFirestore(auth.app),reportId='daily-current';
-const roles={admin:'المشرف العام',primary:'الابتدائي',intermediate:'المتوسط',secondary:'الثانوي',special:'التربية الخاصة'};
+const roles={admin:'المشرف العام',primary:'الابتدائي',intermediate:'المتوسط',secondary:'الثانوي',special:'التربية الخاصة',supervisor:'المشرفون'};
 const login=document.getElementById('collab-login'),status=document.getElementById('collab-status'),error=document.getElementById('collab-error');
 const fields=[...document.querySelectorAll('[data-cell]')],dates=[...document.querySelectorAll('[data-admin-input]')];
 let role='',uid='',locked=false,hiddenRecommendations=[],unsubs=[],timers=new Map(),generation=0,applying=false;
@@ -173,7 +173,7 @@ function safeHtml(input){
 }
 
 function setStatus(t){status.hidden=false;status.textContent=t}
-function canEdit(el){return !!uid && (role==='admin'||(!locked && el.dataset.section===role))}
+function canEdit(el){return !!uid && (role==='admin'||(!locked && (el.dataset.section===role || (role==='supervisor' && /^(primary|intermediate|secondary|special)-(21|22)$/.test(el.dataset.cell||'')) )))}
 function lockUI(){
  document.querySelectorAll('.recommend-row-delete,#recommend-add-row').forEach(b=>{b.hidden=role!=='admin';b.disabled=role!=='admin'});
  fields.forEach(el=>el.contentEditable=canEdit(el)?'true':'false');
