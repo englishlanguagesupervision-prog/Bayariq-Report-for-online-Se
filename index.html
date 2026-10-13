@@ -173,7 +173,7 @@ function safeHtml(input){
 }
 
 function setStatus(t){status.hidden=false;status.textContent=t}
-function canEdit(el){return !!uid && (role==='admin'||(!locked && (el.dataset.section===role || (role==='supervisor' && /^(primary|intermediate|secondary|special)-(21|22)$/.test(el.dataset.cell||'')) )))}
+function canEdit(el){const id=el.dataset.cell||'';const oversight=/^(primary|intermediate|secondary|special)-(21|22)$/.test(id);return !!uid && (role==='admin'||(!locked && ((role==='supervisor'&&oversight)||(role!=='supervisor'&&el.dataset.section===role&&!oversight))))}
 function lockUI(){
  document.querySelectorAll('.recommend-row-delete,#recommend-add-row').forEach(b=>{b.hidden=role!=='admin';b.disabled=role!=='admin'});
  fields.forEach(el=>el.contentEditable=canEdit(el)?'true':'false');
