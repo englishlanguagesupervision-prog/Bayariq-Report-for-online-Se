@@ -173,7 +173,7 @@ function safeHtml(input){
 }
 
 function setStatus(t){status.hidden=false;status.textContent=t}
-function canEdit(el){const id=el.dataset.cell||'';const oversight=/^(primary|intermediate|secondary|special)-(21|22)$/.test(id);return !!uid && (role==='admin'||(!locked && ((role==='supervisor'&&oversight)||(role!=='supervisor'&&el.dataset.section===role&&!oversight))))}
+function canEdit(el){const id=el.dataset.cell||'';const oversight=/^(primary|intermediate|secondary|special)-(21|22)$/.test(id);return !!uid && (role==='admin'||(!locked && ((role==='supervisor'&&(oversight||/^admin-[1-7]$/.test(id)))||(role!=='supervisor'&&el.dataset.section===role&&!oversight))))}
 function lockUI(){
  const clearButton=document.getElementById('clear-all-fields');if(clearButton){clearButton.hidden=role!=='admin';clearButton.disabled=role!=='admin'}
  document.querySelectorAll('.recommend-row-delete,#recommend-add-row').forEach(b=>{b.hidden=role!=='admin';b.disabled=role!=='admin'});
