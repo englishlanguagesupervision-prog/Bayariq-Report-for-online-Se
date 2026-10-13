@@ -65,7 +65,7 @@
  .sheet.page2 table:not(.recommend) td,.sheet.page2 table:not(.recommend) th{font-size:10px!important;line-height:1.2!important;padding:2px 3px!important;height:auto!important}
  .sheet.page2 .large td,.sheet.page2 .medium td,.sheet.page2 .small td{height:auto!important;min-height:0!important}
 }
-</style></head><body><div id="collab-login"><div class="login-box"><h2>مدارس البيارق الأهلية</h2><p>تقرير التعليم عن بُعد — الدخول الجماعي</p><form id="collab-form"><input id="collab-user" autocomplete="username" placeholder="اسم المستخدم" required><input id="collab-pass" type="password" autocomplete="current-password" placeholder="كلمة المرور" required><button type="submit">دخول</button></form><p id="collab-error" role="alert" style="color:#a22"></p></div></div><div id="collab-status" hidden>جاري الاتصال...</div><div class="toolbar" dir="rtl" role="toolbar" aria-label="تنسيق النص">
+</style></head><body><div id="collab-login"><div class="login-box"><h2>مدارس البيارق الأهلية</h2><p>تقرير التعليم عن بُعد — الدخول الجماعي</p><form id="collab-form"><input id="collab-user" autocomplete="username" placeholder="اسم المستخدم أو البريد الإلكتروني للمشرفين" required><input id="collab-pass" type="password" autocomplete="current-password" placeholder="كلمة المرور" required><button type="submit">دخول</button></form><p id="collab-error" role="alert" style="color:#a22"></p></div></div><div id="collab-status" hidden>جاري الاتصال...</div><div class="toolbar" dir="rtl" role="toolbar" aria-label="تنسيق النص">
  <span class="tooltitle">تنسيق التقرير</span>
  <select id="fontFamily" title="نوع الخط" aria-label="نوع الخط"><option value="Tahoma">Tahoma</option><option value="Arial">Arial</option><option value="Traditional Arabic">Traditional Arabic</option><option value="Simplified Arabic">Simplified Arabic</option><option value="Amiri">Amiri</option></select>
  <select id="fontSize" title="حجم الخط" aria-label="حجم الخط"><option value="2">صغير</option><option value="3" selected>عادي</option><option value="4">متوسط</option><option value="5">كبير</option><option value="6">كبير جدًا</option></select>
@@ -186,9 +186,13 @@ function reset(){generation++;unsubs.forEach(f=>f());unsubs=[];timers.forEach(cl
 document.getElementById('collab-form').addEventListener('submit',async e=>{
  e.preventDefault();error.textContent='';
  const username=document.getElementById('collab-user').value.trim().toLowerCase();
- if(!roles[username]){error.textContent='اسم المستخدم غير صحيح';return}
- try{await signInWithEmailAndPassword(auth,username+'@bayariq-login.invalid',document.getElementById('collab-pass').value)}
- catch(e){error.textContent='تعذر تسجيل الدخول. تحقق من البيانات.'}
+ const shortName=username.includes('@')?username.split('@')[0]:username;
+ if(!roles[shortName]){error.textContent='اسم المستخدم غير صحيح';return}
+ if(username.includes('@') && !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(username)){error.textContent='اكتب البريد الإلكتروني كاملًا';return}
+ if(shortName==='supervisor'&&!username.includes('@')){error.textContent='لحساب المشرفين، اكتب البريد الإلكتروني كاملًا المسجل في Firebase';return}
+ const loginEmail=username.includes('@')?username:username+'@bayariq-login.invalid';
+ try{await signInWithEmailAndPassword(auth,loginEmail,document.getElementById('collab-pass').value)}
+ catch(e){error.textContent='تعذر تسجيل الدخول. تأكد من البريد وكلمة المرور.'}
 });
 onAuthStateChanged(auth,async user=>{
  reset();if(!user)return;const current= generation;
